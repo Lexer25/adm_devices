@@ -1,4 +1,5 @@
 <?php defined('SYSPATH') or die('No direct script access.');
+
 defined('DEVICES_VERSION') OR define('DEVICES_VERSION', '2.0.1');
 
 Kohana::$config->load('adm')
@@ -7,12 +8,11 @@ Kohana::$config->load('adm')
         'url' => 'devices',
         'icon' => 'fa-cog',
         'order' => 3,
-       
     ));
-	
-	
-	Route::set('device', 'device(/<action>)')
+
+// ✅ Исправленный маршрут
+Route::set('devices', 'devices(/<action>(/<id>))')
     ->defaults(array(
-        'controller' => 'device',
+        'controller' => 'devices',  // ✅ Правильный контроллер
         'action'     => 'index',
     ));
