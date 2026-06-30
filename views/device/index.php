@@ -25,9 +25,15 @@ if (!isset($all_controllers)) $all_controllers = array();
             <span class="glyphicon glyphicon-th"></span> Матрица
         </a>
         
-        <span style="margin-left: auto; color: #999; font-size: 14px;">
-            <span class="glyphicon glyphicon-info-sign"></span>
-            Всего: <?php echo count($controllers); ?> контроллеров
+        <span style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+            <!-- 🔥 КНОПКА ДОБАВЛЕНИЯ -->
+            <a href="<?php echo URL::site('devices/add'); ?>" class="btn btn-success" style="font-size: 14px; padding: 8px 20px; text-decoration: none; display: inline-block;">
+                <span class="glyphicon glyphicon-plus"></span> Добавить контроллер
+            </a>
+            <span style="color: #999; font-size: 14px;">
+                <span class="glyphicon glyphicon-info-sign"></span>
+                Всего: <?php echo count($controllers); ?> контроллеров
+            </span>
         </span>
     </div>
 </div>
@@ -47,7 +53,6 @@ $view_file = 'device/' . $view_type;
 
 // Проверяем существование файла
 if (Kohana::find_file('views', $view_file) !== FALSE) {
-    // ✅ Правильный способ - используем View::factory для подгрузки
     echo View::factory($view_file, array(
         'controllers' => $controllers,
         'all_doors' => $all_doors,

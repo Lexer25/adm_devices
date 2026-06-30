@@ -113,6 +113,16 @@
 
 <div class="panel panel-info">
     <div class="panel-heading">
+	<div class="panel-heading">
+    <span class="glyphicon glyphicon-list"></span>
+    Таблица контроллеров и дверей
+    <span class="badge"><?php echo count($controllers); ?> контроллеров</span>
+    
+    <!-- 🔥 КНОПКА ДОБАВЛЕНИЯ -->
+    <a href="<?php echo URL::site('devices/add'); ?>" class="btn btn-success btn-xs pull-right" style="color: #fff; margin-top: -3px;">
+        <span class="glyphicon glyphicon-plus"></span> Добавить контроллер
+    </a>
+</div>
         <span class="glyphicon glyphicon-th"></span>
         Матрица доступа (Контроллеры × Точки прохода)
         <span class="badge"><?php echo count($all_controllers); ?> контроллеров</span>
