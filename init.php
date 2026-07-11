@@ -7,7 +7,7 @@ Kohana::$config->load('adm')
         'title' => 'Устройства',
         'url' => 'devices',
         'icon' => 'fa-cog',
-        'order' => 3,
+        'order' => 10,
     ));
 
 // Маршрут для устройств
