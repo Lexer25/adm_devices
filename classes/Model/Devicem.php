@@ -330,4 +330,144 @@ class Model_Devicem extends Model {
             );
         }
     }
+	
+	/**
+ * Получить контроллер по ID_DEV
+ */
+public function get_controller($id_dev)
+{
+    $sql = "
+        SELECT 
+            d.ID_DEV,
+            d.NAME,
+            d.NETADDR,
+            d.ID_CTRL,
+            d.ID_SERVER,
+            d.ID_DEVTYPE,
+            s.NAME as SERVER_NAME,
+            dt.NAME as DEVTYPE_NAME
+        FROM DEVICE d
+        LEFT JOIN SERVER s ON d.ID_SERVER = s.ID_SERVER
+        LEFT JOIN DEVTYPE dt ON d.ID_DEVTYPE = dt.ID_DEVTYPE
+        WHERE d.ID_DEV = $id_dev AND d.ID_READER IS NULL
+    ";
+    
+    $result = DB::query(Database::SELECT, $sql)
+       
+        ->execute(Database::instance('fb'))
+        ->as_array();
+    
+    $result = $this->convert_array_encoding($result);
+    return isset($result[0]) ? $result[0] : null;
+}
+
+/**
+ * Получить двери по ID_CTRL
+ */
+public function get_doors_by_ctrl($id_ctrl)
+{
+    $sql = "
+        SELECT 
+            ID_DEV,
+            NAME,
+            NETADDR,
+            ID_READER
+        FROM DEVICE
+        WHERE ID_CTRL = $id_ctrl AND ID_READER IN (0, 1)
+        ORDER BY ID_READER
+    ";
+    
+    $result = DB::query(Database::SELECT, $sql)
+   //     ->param(':id_ctrl', $id_ctrl)
+        ->execute(Database::instance('fb'))
+        ->as_array();
+    
+    return $this->convert_array_encoding($result);
+}
+
+/**
+ * Обновить контроллер
+ */
+public function update_controller($data)
+{
+    $id_dev = (int)$data['ID_DEV'];
+    $name_win1251 = $this->utf8_to_win1251($data['NAME']);
+    $netaddr = !empty($data['NETADDR']) ? $this->quote($data['NETADDR']) : 'NULL';
+    $id_server = !empty($data['ID_SERVER']) ? (int)$data['ID_SERVER'] : 'NULL';
+    $id_devtype = !empty($data['ID_DEVTYPE']) ? (int)$data['ID_DEVTYPE'] : 'NULL';
+    
+    $sql = "
+        UPDATE DEVICE
+        SET 
+            NAME = {$this->quote($name_win1251)},
+            NETADDR = {$netaddr},
+            ID_SERVER = {$id_server},
+            ID_DEVTYPE = {$id_devtype}
+        WHERE ID_DEV = {$id_dev}
+    ";
+    
+    DB::query(Database::UPDATE, $sql)
+        ->execute(Database::instance('fb'));
+    
+    return true;
+}
+
+/**
+ * Обновить точку прохода (дверь)
+ */
+public function update_accesspoint($id_dev, $name, $netaddr = null)
+{
+    $name_win1251 = $this->utf8_to_win1251($name);
+    $netaddr_escaped = !empty($netaddr) ? $this->quote($netaddr) : 'NULL';
+    
+    $sql = "
+        UPDATE DEVICE
+        SET 
+            NAME = {$this->quote($name_win1251)},
+            NETADDR = {$netaddr_escaped}
+        WHERE ID_DEV = {$id_dev}
+    ";
+    
+    DB::query(Database::UPDATE, $sql)
+        ->execute(Database::instance('fb'));
+    
+    return true;
+}
+
+/**
+ * Обновить контроллер с двумя точками прохода
+ */
+public function update_controller_with_doors($data)
+{
+    try {
+        // 1. Обновляем контроллер
+        $this->update_controller($data);
+        
+        // 2. Обновляем точку прохода 1 (Reader 0)
+        if (!empty($data['door0_id']) && !empty($data['door0_name'])) {
+            $this->update_accesspoint(
+                $data['door0_id'],
+                $data['door0_name']
+            );
+        }
+        
+        // 3. Обновляем точку прохода 2 (Reader 1)
+        if (!empty($data['door1_id']) && !empty($data['door1_name'])) {
+            $this->update_accesspoint(
+                $data['door1_id'],
+                $data['door1_name']
+            );
+        }
+        
+        return array('success' => true);
+        
+    } catch (Exception $e) {
+        return array(
+            'success' => false,
+            'error' => $e->getMessage()
+        );
+    }
+}
+
+
 }

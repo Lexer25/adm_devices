@@ -162,8 +162,15 @@
                                 <div class="controller-node tree-toggle" onclick="toggleTree(this)">
                                     <span class="glyphicon glyphicon-cog text-primary"></span>
                                     <span class="glyphicon glyphicon-chevron-down"></span>
-                                    <strong><?php echo htmlspecialchars($ctrl_name); ?></strong>
-                                    <span class="text-muted">(ID: <?php echo $controller['ID_DEV']; ?>)</span>
+									
+									<a href="<?php echo URL::site('devices/edit/' . $controller['ID_DEV']); ?>" 
+									   style="font-weight: bold; color: #337ab7; text-decoration: none;"
+									   onmouseover="this.style.textDecoration='underline'" 
+									   onmouseout="this.style.textDecoration='none'">
+										<?php echo htmlspecialchars($ctrl_name); ?>
+									</a>									
+
+								   <span class="text-muted">(ID: <?php echo $controller['ID_DEV']; ?>)</span>
                                     <?php if (!empty($controller['NETADDR']) && $controller['NETADDR'] != 'NULL'): ?>
                                         <span class="label label-info">NetAddr: <?php echo htmlspecialchars($controller['NETADDR']); ?></span>
                                     <?php endif; ?>

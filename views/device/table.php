@@ -118,11 +118,16 @@
                                     <?php echo $index++; ?>
                                 </td>
                                 <td rowspan="<?php echo $rowspan; ?>" style="vertical-align: middle;">
-                                    <span class="glyphicon glyphicon-cog text-primary"></span>
-                                    <span class="controller-name"><?php echo htmlspecialchars($ctrl_name); ?></span>
-                                    <br>
-                                    <span class="text-muted">ID: <?php echo $controller['ID_DEV']; ?></span>
-                                </td>
+    <span class="glyphicon glyphicon-cog text-primary"></span>
+    <a href="<?php echo URL::site('devices/edit/' . $controller['ID_DEV']); ?>" 
+       style="font-weight: bold; color: #337ab7; text-decoration: none;"
+       onmouseover="this.style.textDecoration='underline'" 
+       onmouseout="this.style.textDecoration='none'">
+        <?php echo htmlspecialchars($ctrl_name); ?>
+    </a>
+    <br>
+    <span class="text-muted">ID: <?php echo $controller['ID_DEV']; ?></span>
+</td>
                                 <td rowspan="<?php echo $rowspan; ?>" style="vertical-align: middle;">
                                     <code><?php echo htmlspecialchars($ctrl_netaddr); ?></code>
                                 </td>

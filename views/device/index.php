@@ -1,3 +1,10 @@
+<?php if (!empty($success_message)): ?>
+    <div class="alert alert-success" style="margin: 10px 0; padding: 15px; border-radius: 4px;">
+        <span class="glyphicon glyphicon-ok"></span>
+        <strong>Успех!</strong> <?php echo htmlspecialchars($success_message); ?>
+        <button type="button" class="close" onclick="this.parentElement.style.display='none'" style="float: right; background: none; border: none; font-size: 20px; cursor: pointer;">&times;</button>
+    </div>
+<?php endif; ?>
 <?php
 // Проверяем и устанавливаем переменные по умолчанию
 if (!isset($view_type)) $view_type = 'table';
