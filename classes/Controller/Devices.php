@@ -20,7 +20,14 @@ class Controller_Devices extends Controller_Template {
     } elseif ($this->request->query('success') == 'deleted') {
         $success_message = 'Контроллер успешно удален!';
     }
-		
+	
+// Добавляем обработку ошибок
+    $error_message = '';
+    if ($this->request->query('error')) {
+        $error_message = 'Ошибка: ' . htmlspecialchars($this->request->query('error'));
+    }
+
+	
 		$view_type = $this->request->query('view');
         $allowed_views = array('table', 'tree', 'matrix');
         if (!in_array($view_type, $allowed_views)) {
@@ -204,6 +211,50 @@ class Controller_Devices extends Controller_Template {
 		
 		$this->template->content = $content;
 		$this->template->title = 'Редактирование контроллера';
+	}
+
+	/**
+	 * Удаление контроллера и связанных с ним дверей
+	 */
+	public function action_delete()
+	{
+		
+		// Проверка прав администратора
+		if (!$this->is_admin) {
+			// Если не admin - показываем ошибку и редирект
+			$this->redirect('devices');
+		}
+		
+		$id = (int) $this->request->param('id', 0);
+		
+		if ($id <= 0) {
+			$this->redirect('devices');
+		}
+		
+		$model = Model::factory('Devicem');
+		
+		// Получаем данные контроллера для сообщения
+		$controller = $model->get_controller($id);
+		
+		if (!$controller) {
+			$this->redirect('devices');
+		}
+		
+		try {
+			// Удаляем контроллер и связанные двери
+			$result = $model->delete_controller_with_doors($id);
+			
+			if ($result['success']) {
+				// Успешное удаление
+				$this->redirect('devices?success=deleted');
+			} else {
+				// Ошибка при удалении
+				$this->redirect('devices?error=' . urlencode($result['error']));
+			}
+		} catch (Exception $e) {
+			// Исключение при удалении
+			$this->redirect('devices?error=' . urlencode($e->getMessage()));
+		}
 	}
 
 

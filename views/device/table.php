@@ -58,26 +58,82 @@
     .door-item:last-child {
         border-bottom: none;
     }
+    .action-icons {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        align-items: center;
+    }
+    .action-icons a {
+        text-decoration: none;
+        font-size: 18px;
+        transition: transform 0.2s;
+        display: inline-block;
+    }
+    .action-icons a:hover:not(.disabled-icon) {
+        transform: scale(1.2);
+    }
+    .action-icons .edit-icon {
+        color: #337ab7;
+    }
+    .action-icons .edit-icon:hover:not(.disabled-icon) {
+        color: #286090;
+    }
+    .action-icons .delete-icon {
+        color: #d9534f;
+    }
+    .action-icons .delete-icon:hover:not(.disabled-icon) {
+        color: #c9302c;
+    }
+    .action-icons .disabled-icon {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    .btn-disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    .btn-disabled a {
+        pointer-events: none;
+    }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработчик для всех ссылок с классом delete-icon
+    document.querySelectorAll('.delete-icon').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            // Если ссылка disabled - пропускаем
+            if (this.classList.contains('disabled-icon')) {
+                e.preventDefault();
+                return false;
+            }
+            
+            var controllerName = this.getAttribute('data-controller-name') || 'этот контроллер';
+            if (!confirm('Удалить контроллер "' + controllerName + '"?')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    });
+});
+</script>
 
 <div class="panel panel-primary">
     <div class="panel-heading">
-<div class="panel-heading">
-    <span class="glyphicon glyphicon-list"></span>
-    Таблица контроллеров и дверей
-    <span class="badge"><?php echo count($controllers); ?> контроллеров</span>
-    
-    <!-- КНОПКА ДОБАВЛЕНИЯ - всегда показываем, но disabled если нет прав -->
-    <a href="<?php echo $is_admin ? URL::site('devices/add') : '#'; ?>" 
-       class="btn btn-success btn-xs pull-right <?php echo !$is_admin ? 'disabled' : ''; ?>" 
-       style="color: #fff; margin-top: -3px; <?php echo !$is_admin ? 'opacity: 0.65; cursor: not-allowed; pointer-events: none;' : ''; ?>"
-       onclick="<?php echo !$is_admin ? 'return false;' : ''; ?>">
-        <span class="glyphicon glyphicon-plus"></span> Добавить контроллер
-    </a>
-</div>
         <span class="glyphicon glyphicon-list"></span>
         Таблица контроллеров и дверей
         <span class="badge"><?php echo count($controllers); ?> контроллеров</span>
+        
+        <!-- КНОПКА ДОБАВЛЕНИЯ - всегда показываем, но disabled если нет прав -->
+        <a href="<?php echo $is_admin ? URL::site('devices/add') : '#'; ?>" 
+           class="btn btn-success btn-xs pull-right <?php echo !$is_admin ? 'disabled' : ''; ?>" 
+           style="color: #fff; margin-top: -3px; <?php echo !$is_admin ? 'opacity: 0.65; cursor: not-allowed; pointer-events: none;' : ''; ?>"
+           onclick="<?php echo !$is_admin ? 'return false;' : ''; ?>">
+            <span class="glyphicon glyphicon-plus"></span> Добавить контроллер
+        </a>
     </div>
     <div class="panel-body table-responsive">
         <?php if (empty($controllers)): ?>
@@ -92,12 +148,13 @@
                         <th style="width: 150px;">Тип</th>
                         <th style="width: 150px;">Сервер</th>
                         <th style="min-width: 250px;">Двери</th>
-                        <th style="width: 100px;">ID_CTRL</th>
+                        <th style="width: 100px; text-align: center;">Ред.</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php $index = 1; ?>
-                    <?php foreach ($controllers as $ctrl_id => $data): ?>
+                    <?php $index = 1; 
+                  
+                   foreach ($controllers as $ctrl_id => $data): ?>
                         <?php 
                             $controller = $data['controller'];
                             $doors = $data['doors'];
@@ -112,6 +169,13 @@
                                 ? $controller['devtype_name'] : 'По умолчанию';
                             $ctrl_server = !empty($controller['server_name']) && $controller['server_name'] != 'NULL' 
                                 ? $controller['server_name'] : '—';
+                            
+                            // Классы для иконок действий
+                            $edit_class = $is_admin ? 'edit-icon' : 'edit-icon disabled-icon';
+                            $delete_class = $is_admin ? 'delete-icon' : 'delete-icon disabled-icon';
+                            $edit_href = $is_admin ? URL::site('devices/edit/' . $controller['ID_DEV']) : '#';
+                            $delete_href = $is_admin ? URL::site('devices/delete/' . $controller['ID_DEV']) : '#';
+                            $edit_onclick = $is_admin ? '' : 'return false;';
                         ?>
                         
                         <?php if ($door_count > 0): ?>
@@ -121,16 +185,21 @@
                                     <?php echo $index++; ?>
                                 </td>
                                 <td rowspan="<?php echo $rowspan; ?>" style="vertical-align: middle;">
-    <span class="glyphicon glyphicon-cog text-primary"></span>
-    <a href="<?php echo URL::site('devices/edit/' . $controller['ID_DEV']); ?>" 
-       style="font-weight: bold; color: #337ab7; text-decoration: none;"
-       onmouseover="this.style.textDecoration='underline'" 
-       onmouseout="this.style.textDecoration='none'">
-        <?php echo htmlspecialchars($ctrl_name); ?>
-    </a>
-    <br>
-    <span class="text-muted">ID: <?php echo $controller['ID_DEV']; ?></span>
-</td>
+                                    <span class="glyphicon glyphicon-cog text-primary"></span>
+                                    <a href="<?php echo $edit_href; ?>" 
+                                       class="<?php echo !$is_admin ? 'btn-disabled' : ''; ?>"
+                                       style="font-weight: bold; color: #337ab7; text-decoration: none;"
+                                       onmouseover="this.style.textDecoration='underline'" 
+                                       onmouseout="this.style.textDecoration='none'"
+                                       onclick="<?php echo $edit_onclick; ?>"
+                                       <?php echo !$is_admin ? 'title="Требуются права администратора"' : ''; ?>>
+                                        <?php echo htmlspecialchars($ctrl_name); ?>
+                                    </a>
+                                    <br>
+                                    <span class="text-muted">ID: <?php echo $controller['ID_DEV']; ?></span>
+                                    <br>
+                                    <span class="text-muted">ID_CTRL: <?php echo $controller['ID_CTRL']; ?></span>
+                                </td>
                                 <td rowspan="<?php echo $rowspan; ?>" style="vertical-align: middle;">
                                     <code><?php echo htmlspecialchars($ctrl_netaddr); ?></code>
                                 </td>
@@ -162,7 +231,24 @@
                                     </div>
                                 </td>
                                 <td rowspan="<?php echo $rowspan; ?>" style="vertical-align: middle; text-align: center;">
-                                    <span class="label label-primary ctrl-id-badge"><?php echo $ctrl_id; ?></span>
+                                    <div class="action-icons">
+                                        <!-- Иконка редактирования -->
+                                        <a href="<?php echo $edit_href; ?>" 
+                                           class="<?php echo $edit_class; ?>" 
+                                           title="Редактировать"
+                                           onclick="<?php echo $edit_onclick; ?>"
+                                           <?php echo !$is_admin ? 'style="cursor: not-allowed;"' : ''; ?>>
+                                            <span class="glyphicon glyphicon-pencil"></span>
+                                        </a>
+                                        <!-- Иконка удаления -->
+                                        <a href="<?php echo $delete_href; ?>" 
+                                           class="<?php echo $delete_class; ?>" 
+                                           title="Удалить"
+                                           data-controller-name="<?php echo htmlspecialchars($ctrl_name, ENT_QUOTES); ?>"
+                                           <?php echo !$is_admin ? 'style="cursor: not-allowed;"' : ''; ?>>
+                                            <span class="glyphicon glyphicon-trash"></span>
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                             
@@ -199,7 +285,15 @@
                                 <td><?php echo $index++; ?></td>
                                 <td>
                                     <span class="glyphicon glyphicon-cog text-primary"></span>
-                                    <span class="controller-name"><?php echo htmlspecialchars($ctrl_name); ?></span>
+                                    <a href="<?php echo $edit_href; ?>" 
+                                       class="<?php echo !$is_admin ? 'btn-disabled' : ''; ?>"
+                                       style="font-weight: bold; color: #337ab7; text-decoration: none;"
+                                       onmouseover="this.style.textDecoration='underline'" 
+                                       onmouseout="this.style.textDecoration='none'"
+                                       onclick="<?php echo $edit_onclick; ?>"
+                                       <?php echo !$is_admin ? 'title="Требуются права администратора"' : ''; ?>>
+                                        <?php echo htmlspecialchars($ctrl_name); ?>
+                                    </a>
                                     <br>
                                     <span class="text-muted">ID: <?php echo $controller['ID_DEV']; ?></span>
                                 </td>
@@ -208,7 +302,24 @@
                                 <td><span class="label-server"><?php echo htmlspecialchars($ctrl_server); ?></span></td>
                                 <td><span class="text-muted">Нет дверей</span></td>
                                 <td style="text-align: center;">
-                                    <span class="label label-primary ctrl-id-badge"><?php echo $ctrl_id; ?></span>
+                                    <div class="action-icons">
+                                        <!-- Иконка редактирования -->
+                                        <a href="<?php echo $edit_href; ?>" 
+                                           class="<?php echo $edit_class; ?>" 
+                                           title="Редактировать"
+                                           onclick="<?php echo $edit_onclick; ?>"
+                                           <?php echo !$is_admin ? 'style="cursor: not-allowed;"' : ''; ?>>
+                                            <span class="glyphicon glyphicon-pencil"></span>
+                                        </a>
+                                        <!-- Иконка удаления -->
+                                        <a href="<?php echo $delete_href; ?>" 
+                                           class="<?php echo $delete_class; ?>" 
+                                           title="Удалить"
+                                           data-controller-name="<?php echo htmlspecialchars($ctrl_name, ENT_QUOTES); ?>"
+                                           <?php echo !$is_admin ? 'style="cursor: not-allowed;"' : ''; ?>>
+                                            <span class="glyphicon glyphicon-trash"></span>
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endif; ?>

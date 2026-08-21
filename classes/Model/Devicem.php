@@ -219,7 +219,7 @@ class Model_Devicem extends Model {
             )
         ";
 		
-    Kohana::$log->add(Log::DEBUG, '221 '.$sql);         
+   // Kohana::$log->add(Log::DEBUG, '221 '.$sql);         
         DB::query(Database::INSERT, $sql)
             ->execute(Database::instance('fb'));
         
@@ -469,5 +469,103 @@ public function update_controller_with_doors($data)
     }
 }
 
+/**
+ * Удалить контроллер и связанные с ним двери
+ * 
+ * @param int $id_dev ID_DEV контроллера
+ * @return array Результат операции
+ */
+public function delete_controller_with_doors($id_dev)
+{
+    try {
+        // Начинаем транзакцию
+        $db = Database::instance('fb');
+        $db->begin();
+        
+        // 1. Получаем ID_CTRL контроллера
+        $sql = "SELECT ID_CTRL FROM DEVICE WHERE ID_DEV = {$id_dev} AND ID_READER IS NULL";
+        $result = DB::query(Database::SELECT, $sql)
+            ->execute($db)
+            ->as_array();
+        
+        if (empty($result)) {
+            throw new Exception('Контроллер не найден');
+        }
+        
+        $id_ctrl = $result[0]['ID_CTRL'];
+        
+        // 2. Удаляем двери (точки прохода) связанные с контроллером
+        $sql = "DELETE FROM DEVICE WHERE ID_CTRL = {$id_ctrl} AND ID_READER IN (0, 1)";
+        DB::query(Database::DELETE, $sql)
+            ->execute($db);
+        
+        // 3. Удаляем сам контроллер
+        $sql = "DELETE FROM DEVICE WHERE ID_DEV = {$id_dev} AND ID_READER IS NULL";
+        DB::query(Database::DELETE, $sql)
+            ->execute($db);
+        
+        // Фиксируем транзакцию
+        $db->commit();
+        
+        return array(
+            'success' => true,
+            'message' => 'Контроллер и связанные двери успешно удалены'
+        );
+        
+    } catch (Exception $e) {
+        // Откатываем транзакцию в случае ошибки
+        if (isset($db)) {
+            $db->rollback();
+        }
+        
+        return array(
+            'success' => false,
+            'error' => $e->getMessage()
+        );
+    }
+}
+
+		/**
+		 * Проверить, можно ли удалить контроллер
+		 * (проверка на наличие зависимостей)
+		 * 
+		 * @param int $id_dev ID_DEV контроллера
+		 * @return array Результат проверки
+		 */
+		public function can_delete_controller($id_dev)
+		{
+			// Проверяем, есть ли связанные записи в других таблицах
+			// Например, если есть связи с расписаниями, правами доступа и т.д.
+			
+			$dependencies = array();
+			
+			// Пример проверки (замените на свои таблицы)
+			/*
+			// Проверка в таблице ACCESS_RIGHTS
+			$sql = "SELECT COUNT(*) as count FROM ACCESS_RIGHTS WHERE ID_DEV = {$id_dev}";
+			$result = DB::query(Database::SELECT, $sql)
+				->execute(Database::instance('fb'))
+				->as_array();
+			
+			if ($result[0]['count'] > 0) {
+				$dependencies[] = 'Есть связанные права доступа';
+			}
+			
+			// Проверка в таблице SCHEDULE
+			$sql = "SELECT COUNT(*) as count FROM SCHEDULE WHERE ID_DEV = {$id_dev}";
+			$result = DB::query(Database::SELECT, $sql)
+				->execute(Database::instance('fb'))
+				->as_array();
+			
+			if ($result[0]['count'] > 0) {
+				$dependencies[] = 'Есть связанные расписания';
+			}
+			*/
+			
+			return array(
+				'can_delete' => empty($dependencies),
+				'dependencies' => $dependencies
+			);
+		}
 
 }
