@@ -1,3 +1,7 @@
+<?php 
+// $is_admin - доступна глобально через View::bind_global()
+$form_disabled = !$is_admin;
+?>
 <style>
     .form-container {
         max-width: 700px;
@@ -30,6 +34,11 @@
         border-color: #337ab7;
         outline: none;
         box-shadow: 0 0 5px rgba(51,122,183,0.3);
+    }
+    .form-container .form-control[disabled] {
+        background-color: #f5f5f5;
+        cursor: not-allowed;
+        opacity: 0.7;
     }
     .form-container .help-block {
         font-size: 12px;
@@ -78,16 +87,24 @@
         background: #337ab7;
         color: #fff;
     }
-    .btn-primary:hover {
+    .btn-primary:hover:not([disabled]) {
         background: #286090;
+    }
+    .btn-primary[disabled] {
+        opacity: 0.65;
+        cursor: not-allowed;
     }
     .btn-default {
         background: #f5f5f5;
         color: #333;
         border: 1px solid #ddd;
     }
-    .btn-default:hover {
+    .btn-default:hover:not([disabled]) {
         background: #e8e8e8;
+    }
+    .btn-default[disabled] {
+        opacity: 0.65;
+        cursor: not-allowed;
     }
     .btn-success {
         background: #5cb85c;
@@ -169,6 +186,14 @@
         color: #999;
         margin-left: 10px;
     }
+    .auth-warning {
+        background: #fcf8e3;
+        border: 1px solid #faebcc;
+        color: #8a6d3b;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
 </style>
 
 <div class="form-container">
@@ -179,17 +204,22 @@
             <small>ID_DEV: <?php echo $controller['ID_DEV']; ?></small>
         </h1>
     </div>
-   <?php
-echo Debug::vars('182', $errors);//exit;
-echo Debug::vars('183', $success);//exit;
-?>   
- <?php if (!empty($errors['general'])): ?>
-    <div class="alert-danger"><?php echo htmlspecialchars($errors['general']); ?></div>
-<?php endif; ?>
+    
+    <?php if (!$is_admin): ?>
+        <div class="auth-warning">
+            <span class="glyphicon glyphicon-lock"></span>
+            <strong>Требуются права администратора</strong>
+            <p style="margin: 5px 0 0 0;">Для редактирования контроллера необходимы права администратора.</p>
+        </div>
+    <?php endif; ?>
+ 
+    <?php if (!empty($errors['general'])): ?>
+        <div class="alert-danger"><?php echo htmlspecialchars($errors['general']); ?></div>
+    <?php endif; ?>
 
-<?php if ($success): ?>
-    <div class="alert-success">Контроллер успешно обновлен!</div>
-<?php endif; ?>
+    <?php if ($success): ?>
+        <div class="alert-success">Контроллер успешно обновлен!</div>
+    <?php endif; ?>
     
     <form method="POST" action="">
         <!-- Название контроллера -->
@@ -201,6 +231,7 @@ echo Debug::vars('183', $success);//exit;
                    class="form-control" 
                    placeholder="Введите название контроллера"
                    value="<?php echo isset($post_data['name']) ? htmlspecialchars($post_data['name']) : (isset($controller['NAME']) ? htmlspecialchars($controller['NAME']) : ''); ?>"
+                   <?php echo $form_disabled ? 'disabled' : ''; ?>
                    required>
             <?php if (isset($errors['name'])): ?>
                 <div class="help-block"><?php echo htmlspecialchars($errors['name']); ?></div>
@@ -215,14 +246,15 @@ echo Debug::vars('183', $success);//exit;
                    name="netaddr" 
                    class="form-control" 
                    placeholder="Например: 192.168.1.100"
-                   value="<?php echo isset($post_data['netaddr']) ? htmlspecialchars($post_data['netaddr']) : (isset($controller['NETADDR']) ? htmlspecialchars($controller['NETADDR']) : ''); ?>">
+                   value="<?php echo isset($post_data['netaddr']) ? htmlspecialchars($post_data['netaddr']) : (isset($controller['NETADDR']) ? htmlspecialchars($controller['NETADDR']) : ''); ?>"
+                   <?php echo $form_disabled ? 'disabled' : ''; ?>>
             <div class="help-block">IP-адрес контроллера (необязательно)</div>
         </div>
         
         <!-- Сервер -->
         <div class="form-group">
             <label for="id_server">Сервер</label>
-            <select id="id_server" name="id_server" class="form-control">
+            <select id="id_server" name="id_server" class="form-control" <?php echo $form_disabled ? 'disabled' : ''; ?>>
                 <option value="">-- Выберите сервер --</option>
                 <?php foreach ($servers as $server): ?>
                     <option value="<?php echo $server['ID_SERVER']; ?>"
@@ -240,7 +272,7 @@ echo Debug::vars('183', $success);//exit;
         <!-- Тип устройства -->
         <div class="form-group">
             <label for="id_devtype">Тип устройства</label>
-            <select id="id_devtype" name="id_devtype" class="form-control">
+            <select id="id_devtype" name="id_devtype" class="form-control" <?php echo $form_disabled ? 'disabled' : ''; ?>>
                 <option value="">-- Выберите тип --</option>
                 <?php foreach ($devtypes as $devtype): ?>
                     <option value="<?php echo $devtype['ID_DEVTYPE']; ?>"
@@ -297,7 +329,8 @@ echo Debug::vars('183', $success);//exit;
                                } elseif ($door0 && isset($door0['NAME'])) {
                                    echo htmlspecialchars($door0['NAME']);
                                }
-                           ?>">
+                           ?>"
+                           <?php echo $form_disabled ? 'disabled' : ''; ?>>
                     <input type="hidden" name="door0_id" value="<?php echo $door0 ? $door0['ID_DEV'] : ''; ?>">
                 </div>
             </div>
@@ -323,7 +356,8 @@ echo Debug::vars('183', $success);//exit;
                                } elseif ($door1 && isset($door1['NAME'])) {
                                    echo htmlspecialchars($door1['NAME']);
                                }
-                           ?>">
+                           ?>"
+                           <?php echo $form_disabled ? 'disabled' : ''; ?>>
                     <input type="hidden" name="door1_id" value="<?php echo $door1 ? $door1['ID_DEV'] : ''; ?>">
                 </div>
             </div>
@@ -346,7 +380,7 @@ echo Debug::vars('183', $success);//exit;
         </div>
         
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn btn-primary" <?php echo $form_disabled ? 'disabled' : ''; ?>>
                 <span class="glyphicon glyphicon-save"></span> Сохранить
             </button>
             <a href="<?php echo URL::site('devices'); ?>" class="btn btn-default">

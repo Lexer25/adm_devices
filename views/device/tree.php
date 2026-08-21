@@ -108,13 +108,16 @@
 
 <div class="panel panel-success">
     <div class="panel-heading">
-	<div class="panel-heading">
-    <span class="glyphicon glyphicon-list"></span>
-    Таблица контроллеров и дверей
+<div class="panel-heading">
+    <span class="glyphicon glyphicon-tree-deciduous"></span>
+    Дерево устройств
     <span class="badge"><?php echo count($controllers); ?> контроллеров</span>
     
-    <!-- 🔥 КНОПКА ДОБАВЛЕНИЯ -->
-    <a href="<?php echo URL::site('devices/add'); ?>" class="btn btn-success btn-xs pull-right" style="color: #fff; margin-top: -3px;">
+    <!-- КНОПКА ДОБАВЛЕНИЯ - всегда показываем, но disabled если нет прав -->
+    <a href="<?php echo $is_admin ? URL::site('devices/add') : '#'; ?>" 
+       class="btn btn-success btn-xs pull-right <?php echo !$is_admin ? 'disabled' : ''; ?>" 
+       style="color: #fff; margin-top: -3px; <?php echo !$is_admin ? 'opacity: 0.65; cursor: not-allowed; pointer-events: none;' : ''; ?>"
+       onclick="<?php echo !$is_admin ? 'return false;' : ''; ?>">
         <span class="glyphicon glyphicon-plus"></span> Добавить контроллер
     </a>
 </div>

@@ -5,12 +5,14 @@
         <button type="button" class="close" onclick="this.parentElement.style.display='none'" style="float: right; background: none; border: none; font-size: 20px; cursor: pointer;">&times;</button>
     </div>
 <?php endif; ?>
+
 <?php
 // Проверяем и устанавливаем переменные по умолчанию
 if (!isset($view_type)) $view_type = 'table';
 if (!isset($controllers)) $controllers = array();
 if (!isset($all_doors)) $all_doors = array();
 if (!isset($all_controllers)) $all_controllers = array();
+// $is_admin - доступна глобально через View::bind_global()
 ?>
 
 <!-- Переключатель представлений -->
@@ -33,10 +35,14 @@ if (!isset($all_controllers)) $all_controllers = array();
         </a>
         
         <span style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
-            <!-- 🔥 КНОПКА ДОБАВЛЕНИЯ -->
-            <a href="<?php echo URL::site('devices/add'); ?>" class="btn btn-success" style="font-size: 14px; padding: 8px 20px; text-decoration: none; display: inline-block;">
+            <!-- КНОПКА ДОБАВЛЕНИЯ - всегда показываем, но disabled если нет прав -->
+            <a href="<?php echo $is_admin ? URL::site('devices/add') : '#'; ?>" 
+               class="btn btn-success <?php echo !$is_admin ? 'disabled' : ''; ?>" 
+               style="font-size: 14px; padding: 8px 20px; text-decoration: none; display: inline-block; <?php echo !$is_admin ? 'opacity: 0.65; cursor: not-allowed; pointer-events: none;' : ''; ?>"
+               onclick="<?php echo !$is_admin ? 'return false;' : ''; ?>">
                 <span class="glyphicon glyphicon-plus"></span> Добавить контроллер
             </a>
+            
             <span style="color: #999; font-size: 14px;">
                 <span class="glyphicon glyphicon-info-sign"></span>
                 Всего: <?php echo count($controllers); ?> контроллеров
@@ -45,20 +51,10 @@ if (!isset($all_controllers)) $all_controllers = array();
     </div>
 </div>
 
-<!-- ОТЛАДКА: показываем какое представление загружается -->
-<div class="alert alert-info" style="margin: 10px 0;">
-    <strong>Загружено представление:</strong> <?php echo $view_type; ?>
-    <br>
-    <strong>Файл:</strong> device/<?php echo $view_type; ?>.php
-    <br>
-    <strong>Найден:</strong> <?php echo (Kohana::find_file('views', 'device/' . $view_type) !== FALSE) ? 'ДА' : 'НЕТ'; ?>
-</div>
-
 <?php 
-// Загружаем соответствующее представление в зависимости от view_type
+// Загружаем соответствующее представление
 $view_file = 'device/' . $view_type;
 
-// Проверяем существование файла
 if (Kohana::find_file('views', $view_file) !== FALSE) {
     echo View::factory($view_file, array(
         'controllers' => $controllers,
