@@ -36,7 +36,6 @@ class Controller_Devices extends Controller_Template {
         
         $model = Model::factory('Devicem');
         $controllers = $model->get_controllers_grouped();
-        
         $all_doors = array();
         $all_controllers = array();
         if ($view_type == 'matrix') {
@@ -44,7 +43,8 @@ class Controller_Devices extends Controller_Template {
                 $all_controllers[] = array(
                     'id' => $ctrl_id,
                     'name' => $data['controller']['NAME'],
-                    'dev_id' => $data['controller']['ID_DEV']
+                    'dev_id' => $data['controller']['ID_DEV'],
+                    'server_name' => $data['controller']['server_name']
                 );
                 foreach ($data['doors'] as $door) {
                     $all_doors[] = array(
