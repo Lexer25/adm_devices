@@ -35,6 +35,14 @@ if (!isset($all_controllers)) $all_controllers = array();
         </a>
         
         <span style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+            <!-- УПРАВЛЕНИЕ ГРУППАМИ ТОЧЕК ПРОХОДА - команды для набора точек прохода -->
+            <a href="<?php echo $is_admin ? URL::site('devices/groups') : '#'; ?>"
+               class="btn btn-warning <?php echo !$is_admin ? 'disabled' : ''; ?>"
+               style="font-size: 14px; padding: 8px 20px; text-decoration: none; display: inline-block; <?php echo !$is_admin ? 'opacity: 0.65; cursor: not-allowed; pointer-events: none;' : ''; ?>"
+               onclick="<?php echo !$is_admin ? 'return false;' : ''; ?>">
+                <span class="glyphicon glyphicon-cog"></span> Группы точек прохода
+            </a>
+
             <!-- КНОПКА ДОБАВЛЕНИЯ - всегда показываем, но disabled если нет прав -->
             <a href="<?php echo $is_admin ? URL::site('devices/add') : '#'; ?>" 
                class="btn btn-success <?php echo !$is_admin ? 'disabled' : ''; ?>" 

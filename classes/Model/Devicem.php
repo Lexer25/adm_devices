@@ -568,4 +568,354 @@ public function delete_controller_with_doors($id_dev)
 			);
 		}
 
+	/* ------------------------------------------------------------------
+	 * Группы точек прохода (DEVGROUP) и команды управления точками прохода
+	 * ------------------------------------------------------------------ */
+
+	/**
+	 * Корневая группа устройств («все устройства»).
+	 * Служебная запись таблицы DEVGROUP, в списках групп не показывается.
+	 */
+	const DEVGROUP_ROOT = 1;
+
+	/**
+	 * Оставляет из переданного списка только положительные целые числа.
+	 * Ключи результата равны значениям: так список удобно объединять и
+	 * подставлять в SQL через implode().
+	 *
+	 * @param mixed $ids значение из POST (массив, строка или null)
+	 * @return array массив вида id => id
+	 */
+	private function sanitize_ids($ids)
+	{
+		$result = array();
+
+		foreach ((array) $ids as $id) {
+			$id = (int) $id;
+			if ($id > 0) $result[$id] = $id;
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Список всех точек прохода (устройств со считывателем) с данными
+	 * контроллера и транспортного сервера.
+	 *
+	 * @return array
+	 */
+	public function get_access_points()
+	{
+		$sql = "
+			SELECT
+				d.ID_DEV,
+				d.NAME,
+				d.ID_READER,
+				c.ID_DEV AS CONTROLLER_ID,
+				c.NAME   AS CONTROLLER_NAME,
+				s.NAME   AS SERVER_NAME
+			FROM DEVICE d
+			JOIN DEVICE c ON c.ID_CTRL = d.ID_CTRL AND c.ID_READER IS NULL
+			LEFT JOIN SERVER s ON s.ID_SERVER = c.ID_SERVER
+			WHERE d.ID_READER IS NOT NULL
+			ORDER BY c.NAME, d.ID_READER, d.NAME
+		";
+
+		$result = DB::query(Database::SELECT, $sql)
+			->execute(Database::instance('fb'))
+			->as_array();
+
+		return $this->convert_array_encoding($result);
+	}
+
+	/**
+	 * Данные точек прохода по списку ID_DEV.
+	 *
+	 * @param mixed $ids список ID_DEV (массив или строка)
+	 * @return array
+	 */
+	public function get_access_points_by_ids($ids)
+	{
+		$ids = $this->sanitize_ids($ids);
+
+		if (empty($ids)) return array();
+
+		$sql = "
+			SELECT
+				d.ID_DEV,
+				d.NAME,
+				d.ID_READER,
+				c.ID_DEV AS CONTROLLER_ID,
+				c.NAME   AS CONTROLLER_NAME,
+				s.NAME   AS SERVER_NAME
+			FROM DEVICE d
+			JOIN DEVICE c ON c.ID_CTRL = d.ID_CTRL AND c.ID_READER IS NULL
+			LEFT JOIN SERVER s ON s.ID_SERVER = c.ID_SERVER
+			WHERE d.ID_READER IS NOT NULL
+				AND d.ID_DEV IN (" . implode(',', $ids) . ")
+			ORDER BY c.NAME, d.ID_READER, d.NAME
+		";
+
+		$result = DB::query(Database::SELECT, $sql)
+			->execute(Database::instance('fb'))
+			->as_array();
+
+		return $this->convert_array_encoding($result);
+	}
+
+	/**
+	 * Оставляет из списка только существующие точки прохода.
+	 * Защита от подстановки в команду управления произвольных ID_DEV
+	 * (контроллеров, серверов, несуществующих устройств).
+	 *
+	 * @param mixed $ids список ID_DEV
+	 * @return array массив вида id_dev => id_dev
+	 */
+	public function filter_access_points($ids)
+	{
+		$ids = $this->sanitize_ids($ids);
+		$result = array();
+
+		if (empty($ids)) return $result;
+
+		$sql = "
+			SELECT ID_DEV
+			FROM DEVICE
+			WHERE ID_READER IS NOT NULL
+				AND ID_DEV IN (" . implode(',', $ids) . ")
+		";
+
+		$query = DB::query(Database::SELECT, $sql)
+			->execute(Database::instance('fb'))
+			->as_array();
+
+		foreach ($query as $row) {
+			$id_dev = (int) Arr::get($row, 'ID_DEV');
+			if ($id_dev > 0) $result[$id_dev] = $id_dev;
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Читает из БД структуру групп устройств:
+	 *   - $defs     — описания групп (ID_DEVGROUP, NAME, ID_PARENT), кроме корневой;
+	 *   - $children — дочерние группы: id_parent => array(id_devgroup);
+	 *   - $direct   — точки прохода, входящие в группу напрямую: id_parent => array(id_dev).
+	 *
+	 * В таблице DEVGROUP строки с ID_DEV IS NULL описывают саму группу,
+	 * строки с ID_DEV IS NOT NULL — принадлежность устройства к группе
+	 * (при этом ID_PARENT равен идентификатору группы).
+	 *
+	 * @param array $defs
+	 * @param array $children
+	 * @param array $direct
+	 * @return void
+	 */
+	private function load_devgroup_tree(&$defs, &$children, &$direct)
+	{
+		$defs = array();
+		$children = array();
+		$direct = array();
+
+		$sql = "SELECT ID_DEVGROUP, NAME, ID_PARENT FROM DEVGROUP WHERE ID_DEV IS NULL";
+		$query = DB::query(Database::SELECT, $sql)
+			->execute(Database::instance('fb'))
+			->as_array();
+
+		foreach ($query as $row) {
+			$id = (int) Arr::get($row, 'ID_DEVGROUP');
+
+			// Корневая группа служебная: её точки прохода — это все точки прохода системы.
+			if ($id <= 0 OR $id === self::DEVGROUP_ROOT) continue;
+
+			$defs[$id] = array(
+				'id'        => $id,
+				'name'      => $this->win1251_to_utf8(Arr::get($row, 'NAME')),
+				'id_parent' => (int) Arr::get($row, 'ID_PARENT'),
+			);
+		}
+
+		$sql = "
+			SELECT dg.ID_PARENT AS ID_DEVGROUP, d.ID_DEV
+			FROM DEVGROUP dg
+			JOIN DEVICE d ON d.ID_DEV = dg.ID_DEV
+			WHERE dg.ID_DEV IS NOT NULL
+				AND d.ID_READER IS NOT NULL
+		";
+		$query = DB::query(Database::SELECT, $sql)
+			->execute(Database::instance('fb'))
+			->as_array();
+
+		foreach ($query as $row) {
+			$group_id = (int) Arr::get($row, 'ID_DEVGROUP');
+			$id_dev = (int) Arr::get($row, 'ID_DEV');
+
+			if ($id_dev <= 0 OR ! isset($defs[$group_id])) continue;
+
+			$direct[$group_id][$id_dev] = $id_dev;
+		}
+
+		foreach ($defs as $id => $def) {
+			$parent = $def['id_parent'];
+
+			if ($parent === $id) continue;
+
+			// Родитель не является группой (корень или потерянная запись) —
+			// показываем группу на верхнем уровне, чтобы она не исчезла из списка.
+			if ( ! isset($defs[$parent])) {
+				$children[self::DEVGROUP_ROOT][$id] = $id;
+				continue;
+			}
+
+			$children[$parent][$id] = $id;
+		}
+	}
+
+	/**
+	 * Рекурсивно собирает точки прохода группы с учётом вложенных групп.
+	 *
+	 * @param int   $group_id идентификатор группы
+	 * @param array $children дочерние группы
+	 * @param array $direct   точки прохода группы
+	 * @param array $memo     кэш результатов: id группы => array(id_dev => id_dev)
+	 * @param array $visited  группы в текущей ветке обхода (защита от зацикливания)
+	 * @return array массив вида id_dev => id_dev
+	 */
+	private function resolve_group_access_points($group_id, &$children, &$direct, &$memo, &$visited)
+	{
+		if (isset($memo[$group_id])) return $memo[$group_id];
+
+		// Иерархия групп может содержать цикл: второй раз в ту же ветку не заходим.
+		if (isset($visited[$group_id])) return array();
+
+		$visited[$group_id] = TRUE;
+
+		$result = array();
+
+		if (isset($direct[$group_id])) {
+			foreach ($direct[$group_id] as $id_dev) {
+				$result[$id_dev] = $id_dev;
+			}
+		}
+
+		if (isset($children[$group_id])) {
+			foreach ($children[$group_id] as $child_id) {
+				foreach ($this->resolve_group_access_points($child_id, $children, $direct, $memo, $visited) as $id_dev) {
+					$result[$id_dev] = $id_dev;
+				}
+			}
+		}
+
+		unset($visited[$group_id]);
+
+		$memo[$group_id] = $result;
+
+		return $result;
+	}
+
+	/**
+	 * Точки прохода выбранных групп (включая вложенные группы).
+	 * Неизвестные и служебные группы игнорируются.
+	 *
+	 * @param mixed $group_ids список ID_DEVGROUP
+	 * @return array массив вида id_dev => id_dev
+	 */
+	public function get_group_access_point_ids($group_ids)
+	{
+		$defs = $children = $direct = array();
+		$this->load_devgroup_tree($defs, $children, $direct);
+
+		$memo = array();
+		$result = array();
+
+		foreach ($this->sanitize_ids($group_ids) as $group_id) {
+			if ( ! isset($defs[$group_id])) continue;
+
+			$visited = array();
+
+			foreach ($this->resolve_group_access_points($group_id, $children, $direct, $memo, $visited) as $id_dev) {
+				$result[$id_dev] = $id_dev;
+			}
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Дерево групп устройств — все группы, кроме служебной корневой,
+	 * в том же составе, что и в разделе «Группы устройств» (devgroup).
+	 * Возвращается «плоским» списком в порядке обхода дерева; уровень
+	 * вложенности — в поле level, полный путь — в поле path.
+	 *
+	 * Группы без точек прохода тоже попадают в список: у них total = 0
+	 * (в представлении такие группы показываются, но выбрать их нельзя).
+	 *
+	 * @return array
+	 */
+	public function get_device_groups()
+	{
+		$defs = $children = $direct = array();
+		$this->load_devgroup_tree($defs, $children, $direct);
+
+		$memo = array();
+		$visited = array();
+		$groups = array();
+
+		$this->walk_device_groups(self::DEVGROUP_ROOT, 0, '', $defs, $children, $direct, $memo, $visited, $groups);
+
+		return $groups;
+	}
+
+	/**
+	 * Рекурсивный обход дерева групп для get_device_groups().
+	 *
+	 * @param int    $parent_id   группа, чьи дочерние элементы обходим
+	 * @param int    $level       уровень вложенности
+	 * @param string $parent_path путь родителя
+	 * @param array  $defs        описания групп
+	 * @param array  $children    дочерние группы
+	 * @param array  $direct      точки прохода групп
+	 * @param array  $memo        кэш resolve_group_access_points()
+	 * @param array  $visited     уже выведенные группы
+	 * @param array  $result      результат обхода
+	 * @return void
+	 */
+	private function walk_device_groups($parent_id, $level, $parent_path, &$defs, &$children, &$direct, &$memo, &$visited, &$result)
+	{
+		if ( ! isset($children[$parent_id])) return;
+
+		$ids = array_values($children[$parent_id]);
+
+		// Порядок как в списке групп устройства: по названию.
+		usort($ids, function ($a, $b) use ($defs) {
+			return strcasecmp($defs[$a]['name'], $defs[$b]['name']);
+		});
+
+		foreach ($ids as $id) {
+			if (isset($visited[$id])) continue;
+
+			$visited[$id] = TRUE;
+
+			// отдельный $visited: resolve() помечает ветку обхода, а не дерево целиком
+			$branch = array();
+			$points = $this->resolve_group_access_points($id, $children, $direct, $memo, $branch);
+
+			$path = ($parent_path === '') ? $defs[$id]['name'] : $parent_path . ' / ' . $defs[$id]['name'];
+
+			$result[] = array(
+				'id'           => $id,
+				'name'         => $defs[$id]['name'],
+				'id_parent'    => $defs[$id]['id_parent'],
+				'level'        => $level,
+				'path'         => $path,
+				'direct'       => isset($direct[$id]) ? count($direct[$id]) : 0,
+				'total'        => count($points),
+				'has_children' => isset($children[$id]),
+			);
+
+			$this->walk_device_groups($id, $level + 1, $path, $defs, $children, $direct, $memo, $visited, $result);
+		}
+	}
+
 }
